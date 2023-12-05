@@ -30,6 +30,12 @@ NeuralNetwork::NeuralNetwork(std::vector<uint> topology, Scalar learningRate) {
         }
     }
 }
+void NeuralNetwork::clearDeltas() {
+    for (auto ptr : deltas) {
+        delete ptr;
+    }
+    deltas.clear();
+}
 
 ColVector NeuralNetwork::sigmoid(const ColVector& x) {
     return 1.0 / (1.0 + (-x).array().exp());
@@ -57,17 +63,68 @@ float NeuralNetwork::cost(ColVector& actual, uint expected) {
 }
 
 
-// function for backward propagation of errors made by neurons
-void propagateBackward(RowVector& output);
+ColVector NeuralNetwork::sigmoidDerivative(const ColVector& x) {
+    ColVector sigmoidX = sigmoid(x);
+    return sigmoidX.array() * (1 - sigmoidX.array());
+}
 
-// function to calculate errors made by neurons in each layer
-void calcErrors(RowVector& output);
+void NeuralNetwork::propagateBackward(uint expected) {
+    // Clear previous deltas
+    clearDeltas();
 
-// function to update the weights of connections
-void updateWeights();
+    // Calculate the output layer error
+    ColVector diff = ColVector::Zero(topology.back());
+    diff[expected] = 1;
+    ColVector outputError = *neuronLayers.back() - diff;
 
-// function to train the neural network give an array of data points
-void train(std::vector<RowVector*> data);
+    // Calculate the output layer delta
+    deltas.push_back(new ColVector(outputError.array() * sigmoidDerivative(*neuronLayers.back()).array()));
+
+    // Backpropagate the error to hidden layers
+    for (int i = topology.size() - 2; i > 0; --i) {
+        // Calculate the error in the current layer
+        ColVector error = (weights[i]->transpose() * *deltas.back()).array() * sigmoidDerivative(*neuronLayers[i]).array();
+        deltas.push_back(new ColVector(error));
+    }
+
+    // Reverse the order of deltas for proper weight update
+    std::reverse(deltas.begin(), deltas.end());
+}
+
+void NeuralNetwork::updateWeights() {
+    for (int i = 0; i < weights.size(); ++i) {
+        Matrix weightUpdate = -learningRate * (*deltas[i]) * neuronLayers[i]->transpose();
+        weights[i]->noalias() += weightUpdate;
+        biases[i]->noalias() += -learningRate * (*deltas[i]);
+    }
+}
+
+void NeuralNetwork::train(std::vector<std::vector<double>> images, std::vector<int> labels) {
+    // Assuming your NeuralNetwork class has a function to set input values
+    // Set input values and perform forward and backward propagation for each training example
+    for (size_t i = 0; i < images.size(); ++i) {
+        setInputs(images[i]);
+        propagateForward();
+        propagateBackward(labels[i]);
+        updateWeights();
+        clearDeltas();
+    }
+}
+
+// Assuming you have a function to set the input values in your NeuralNetwork class
+void NeuralNetwork::setInputs(const std::vector<double>& input) {
+    for (size_t i = 0; i < input.size(); ++i) {
+        (*neuronLayers[0])[i] = input[i];
+    }
+}
+
+uint NeuralNetwork::sample(const std::vector<double>& input) {
+    setInputs(input);
+    propagateForward();
+
+    // Assuming you have a function to get the index of the maximum element in a vector
+    return std::distance(neuronLayers.back()->data(), std::max_element(neuronLayers.back()->data(), neuronLayers.back()->data() + neuronLayers.back()->size()));
+}
 
 // storage objects for working of neural network
 /*
@@ -78,8 +135,8 @@ void train(std::vector<RowVector*> data);
     */
 std::vector<ColVector*> neuronLayers; // stores the different layers of out network
 std::vector<RowVector*> cacheLayers; // stores the unactivated (activation fn not yet applied) values of layers
-std::vector<RowVector*> deltas; // stores the error contribution of each neurons
 std::vector<Matrix*> weights; // the connection weights itself
 std::vector<ColVector*> biases;
+std::vector<ColVector*> deltas;
 Scalar learningRate;
 std::vector<uint> topology;

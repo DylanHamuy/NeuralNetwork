@@ -81,6 +81,8 @@ int main() {
     float learningRate = 0.01;
     std::vector<uint> topology = {784, 16, 16, 10};
     NeuralNetwork neuralNetwork(topology, learningRate);
+    neuralNetwork.train(images, labels);
+    std::cout << "ANSWER : " << neuralNetwork.sample(images[1]) << "LABEL : " << labels[1];
 
 
     return 0;

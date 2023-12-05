@@ -22,8 +22,9 @@ public:
 
 	// function for backward propagation of errors made by neurons
 	void propagateForward();
+	void setInputs(const std::vector<double>& input);
 	
-	void propagateBackward();
+	void propagateBackward(uint expected);
 
 	// for given weights/baises, take many training examples, return the average cost
 	// avg cost = costs from every example input of a picture for a set weight/bias
@@ -35,10 +36,14 @@ public:
 	// function to update the weights of connections
 	void updateWeights();
 
+	void gradient();
+
 	// function to train the neural network give an array of data points
 	void train(std::__1::vector<std::__1::vector<double>> images, std::__1::vector<int> labels);
 
-	uint sample(std::__1::vector<double>);
+	uint sample(const std::vector<double>& input);
+	void clearDeltas();
+	ColVector sigmoidDerivative(const ColVector& x);
 
 	// storage objects for working of neural network
 	std::vector<ColVector*> neuronLayers; // stores the different layers of out network
@@ -46,6 +51,8 @@ public:
     std::vector<ColVector*> biases;
 	Scalar learningRate;
     std::vector<uint> topology;
+	std::vector<ColVector*> deltas;
+
 };
 #endif // NEURALNETWORK_HPP 
 
